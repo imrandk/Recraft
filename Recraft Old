@@ -90,5 +90,5 @@ function clearConsole() {
     console.clear();
 }
 
-// Set interval to clear console every 10 minutes (600,000 milliseconds)
-setInterval(clearConsole, 600000);
+// Set interval to clear console every 1 minutes (60,000 milliseconds)
+setInterval(clearConsole, 60,000);
