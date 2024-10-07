@@ -1,0 +1,83 @@
+// Function to add a delay
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Function to click the first button
+const clickRecraftButton = () => {
+    const button = document.querySelector('button[data-testid="recraft-button"]');
+    if (button) button.click();
+    return Promise.resolve();
+};
+
+// Function to find and confirm the Recraft button
+const findRecraftButton = () => {
+    const button = document.querySelector('button[data-testid="recraft-button"]');
+    return Promise.resolve(button && button.textContent.trim() === 'Recraft');
+};
+
+// Polling function to check for the button
+const waitForRecraftButton = (interval = 1000, maxAttempts = 30) => {
+    return new Promise(resolve => {
+        let attempts = 0;
+        const checkButton = setInterval(async () => {
+            if (attempts >= maxAttempts) {
+                clearInterval(checkButton);
+                resolve(false);
+                return;
+            }
+            if (await findRecraftButton()) {
+                clearInterval(checkButton);
+                resolve(true);
+            }
+            attempts++;
+        }, interval);
+    });
+};
+
+// Function to click the toggler button
+const clickTogglerButton = () => {
+    const togglerButton = document.querySelector('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
+    if (togglerButton) togglerButton.click();
+    return Promise.resolve();
+};
+
+// Function to click the SVG button
+const clickSVGButton = () => {
+    const buttons = document.querySelectorAll('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
+    buttons.forEach(button => {
+        if (button.textContent.trim() === 'SVG' && button.offsetParent !== null && !button.disabled) {
+            button.click();
+        }
+    });
+    return Promise.resolve();
+};
+
+// Function to click the second button
+const clickSecondButton = () => {
+    const button = document.querySelector('button.c-xHEva:nth-child(2)');
+    if (button && button.offsetParent !== null && !button.disabled) {
+        button.click();
+    }
+    return Promise.resolve();
+};
+
+// Main function to execute all actions sequentially
+const runSequentially = async () => {
+    for (let i = 0; i < 12; i++) {
+        await clickRecraftButton();
+        await delay(1000);
+        await waitForRecraftButton();
+        await delay(1000);
+        await clickTogglerButton();
+        await delay(1000);
+        await clickSVGButton();
+        await delay(1000);
+        await clickSecondButton();
+        await delay(1000);
+        await clickTogglerButton();
+        await delay(1000);
+        await clickSVGButton();
+    }
+};
+
+// Start the sequence
+runSequentially();
