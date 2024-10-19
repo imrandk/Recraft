@@ -68,7 +68,7 @@ const isCancelButtonPresent = () => {
 
 // Main function to execute all actions sequentially
 const runSequentially = async () => {
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 24; i++) {
         if (isCancelButtonPresent()) {
             console.log("Cancel button found. Stopping execution.");
             break;  // Stop the loop if the Cancel button is found
