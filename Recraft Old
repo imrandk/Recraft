@@ -60,9 +60,21 @@ const clickSecondButton = () => {
     return Promise.resolve();
 };
 
+// Function to check if the "Cancel" button is present
+const isCancelButtonPresent = () => {
+    const cancelButton = document.querySelector('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary');
+    return cancelButton && cancelButton.textContent.trim() === 'Cancel';
+};
+
 // Main function to execute all actions sequentially
 const runSequentially = async () => {
     for (let i = 0; i < 12; i++) {
+        if (isCancelButtonPresent()) {
+            console.log("Cancel button found. Stopping execution.");
+            break;  // Stop the loop if the Cancel button is found
+        }
+
+        await delay(5000);  // Wait two seconds before starting each iteration
         await clickRecraftButton();
         await delay(1000);
         await waitForRecraftButton();
@@ -81,14 +93,3 @@ const runSequentially = async () => {
 
 // Start the sequence
 runSequentially();
-
-
-
-
-// Function to clear the console
-function clearConsole() {
-    console.clear();
-}
-
-// Set interval to clear console every 1 minutes (60,000 milliseconds)
-setInterval(clearConsole, 60,000);
