@@ -66,6 +66,12 @@ const isCancelButtonPresent = () => {
     return cancelButton && cancelButton.textContent.trim() === 'Cancel';
 };
 
+// Function to check for the "Max Concurrency" message
+const checkMaxConcurrencyMessage = () => {
+    const messageDiv = document.querySelector('div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true');
+    return messageDiv && messageDiv.textContent.includes("Sorry, we can’t recraft as fast as you click");
+};
+
 // Main function to execute all actions sequentially
 const runSequentially = async () => {
     for (let i = 0; i < 24; i++) {
@@ -74,8 +80,24 @@ const runSequentially = async () => {
             break;  // Stop the loop if the Cancel button is found
         }
 
-        await delay(5000);  // Wait two seconds before starting each iteration
+        await delay(2000);  // Wait five seconds before starting each iteration
         await clickRecraftButton();
+
+        // Wait for the "Max Concurrency" message for 5 seconds
+        let concurrencyError = false;
+        for (let j = 0; j < 5; j++) {
+            if (checkMaxConcurrencyMessage()) {
+                concurrencyError = true;
+                console.log("Max Concurrency message found. Retrying the first button.");
+                break;  // Restart the process if the error is found
+            }
+            await delay(1000);  // Check for the message every second
+        }
+
+        if (concurrencyError) {
+            continue;  // Restart the iteration if concurrency error is found
+        }
+
         await delay(1000);
         await waitForRecraftButton();
         await delay(1000);
