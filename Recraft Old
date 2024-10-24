@@ -74,7 +74,7 @@ const checkMaxConcurrencyMessage = () => {
 
 // Main function to execute all actions sequentially
 const runSequentially = async () => {
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 99; i++) {
         if (isCancelButtonPresent()) {
             console.log("Cancel button found. Stopping execution.");
             break;  // Stop the loop if the Cancel button is found
@@ -91,7 +91,7 @@ const runSequentially = async () => {
                 console.log("Max Concurrency message found. Retrying the first button.");
                 break;  // Restart the process if the error is found
             }
-            await delay(1000);  // Check for the message every second
+            await delay(2000);  // Check for the message every second
         }
 
         if (concurrencyError) {
