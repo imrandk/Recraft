@@ -59,7 +59,8 @@ document.addEventListener('mouseup', () => isDragging = false);
   const regex = /Prompt:\s*(.+?)(?=\n|$)/g;
   let prompts = [];
   const setReactInput = (el, val) => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, val);
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')
+      .set.call(el, val);
     el.dispatchEvent(new Event('input', { bubbles: true }));
   };
   const setNextPrompt = () => new Promise(resolve => {
@@ -87,8 +88,32 @@ document.addEventListener('mouseup', () => isDragging = false);
     }, intv);
   });
   const delay = ms => new Promise(r => setTimeout(r, ms));
-  const clickBtn = sel => { const btn = document.querySelector(sel); if (btn) btn.click(); return Promise.resolve(); };
-  const findRecraft = () => Promise.resolve(document.querySelector('button[data-testid="recraft-button"]')?.textContent.trim() === 'Recraft');
+  const clickBtn = sel => { 
+    const btn = document.querySelector(sel); 
+    if (btn) btn.click(); 
+    return Promise.resolve(); 
+  };
+
+  // Updated function: waits up to 'timeout' ms for any button matching the selector
+  // that has text "SVG", then clicks the first found.
+  const clickSvgBtn = async (sel, timeout = 5000) => {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const btns = document.querySelectorAll(sel);
+      for (const btn of btns) {
+        if (btn.textContent.trim() === "SVG") {
+          btn.click();
+          return Promise.resolve();
+        }
+      }
+      await delay(100);
+    }
+    return Promise.resolve();
+  };
+
+  const findRecraft = () => Promise.resolve(
+    document.querySelector('button[data-testid="recraft-button"]')?.textContent.trim() === 'Recraft'
+  );
   const waitForRecraft = (intv = 1000, max = 30) => new Promise(resolve => {
     let attempts = 0;
     const chk = setInterval(async () => {
@@ -96,8 +121,12 @@ document.addEventListener('mouseup', () => isDragging = false);
       if (await findRecraft()) { clearInterval(chk); resolve(true); }
     }, intv);
   });
-  const isCancel = () => document.querySelector('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary')?.textContent.trim() === 'Cancel';
-  const checkConcurrency = () => document.querySelector('div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true')?.textContent.includes("Sorry, we can’t recraft as fast as you click");
+  const isCancel = () => document.querySelector(
+    'button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary'
+  )?.textContent.trim() === 'Cancel';
+  const checkConcurrency = () => document.querySelector(
+    'div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true'
+  )?.textContent.includes("Sorry, we can’t recraft as fast as you click");
   
   const runSeq = async () => {
     while (prompts.length) {
@@ -118,13 +147,13 @@ document.addEventListener('mouseup', () => isDragging = false);
       await delay(1000);
       await clickBtn('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
       await delay(1000);
-      await clickBtn('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
+      await clickSvgBtn('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
       await delay(1000);
       await clickBtn('button.c-xHEva:nth-child(2)');
       await delay(1000);
       await clickBtn('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
       await delay(1000);
-      await clickBtn('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
+      await clickSvgBtn('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
     }
   };
   
