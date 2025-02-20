@@ -1,0 +1,143 @@
+// Draggable box
+const box = document.createElement('div');
+Object.assign(box.style, {
+  position: 'absolute',
+  width: '300px',
+  height: '200px',
+  backgroundColor: 'white',
+  border: '2px solid #ccc',
+  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+  top: '50px',
+  left: '50px',
+  resize: 'both',
+  overflow: 'auto'
+});
+const header = document.createElement('div');
+Object.assign(header.style, {
+  width: '100%',
+  height: '30px',
+  backgroundColor: '#007bff',
+  color: 'white',
+  textAlign: 'center',
+  lineHeight: '30px',
+  cursor: 'move'
+});
+header.textContent = 'Drag Me';
+box.appendChild(header);
+const ta = document.createElement('textarea');
+ta.id = 'promptBoxTextarea';
+Object.assign(ta.style, {
+  width: '100%',
+  height: 'calc(100% - 30px)',
+  border: 'none',
+  outline: 'none',
+  resize: 'none',
+  padding: '10px',
+  fontSize: '16px'
+});
+ta.placeholder = 'Enter prompts in format:\nPrompt: Your prompt text';
+box.appendChild(ta);
+document.body.appendChild(box);
+
+let isDragging = false, offsetX, offsetY;
+header.addEventListener('mousedown', e => {
+  isDragging = true;
+  const rect = box.getBoundingClientRect();
+  offsetX = e.clientX - rect.left;
+  offsetY = e.clientY - rect.top;
+});
+document.addEventListener('mousemove', e => {
+  if (isDragging) {
+    box.style.left = `${e.clientX - offsetX}px`;
+    box.style.top = `${e.clientY - offsetY}px`;
+  }
+});
+document.addEventListener('mouseup', () => isDragging = false);
+
+// Automation code
+(() => {
+  const regex = /Prompt:\s*(.+?)(?=\n|$)/g;
+  let prompts = [];
+  const setReactInput = (el, val) => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, val);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  const setNextPrompt = () => new Promise(resolve => {
+    const src = document.getElementById('promptBoxTextarea');
+    if (prompts.length && src) {
+      const text = prompts.shift();
+      const esc = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`^\\s*Prompt:\\s*${esc}\\s*(?:\\r?\\n)?`, 'm');
+      src.value = src.value.replace(re, '');
+      const tgt = document.querySelector('textarea[data-testid="recraft-textarea"]');
+      if (tgt) {
+        tgt.focus();
+        setReactInput(tgt, text);
+        tgt.dispatchEvent(new Event('change', { bubbles: true }));
+        setTimeout(() => resolve(text), 100);
+      } else resolve(null);
+    } else resolve(null);
+  });
+  const waitForInput = (exp, intv = 500, max = 20) => new Promise(resolve => {
+    let attempts = 0;
+    const chk = setInterval(() => {
+      const tgt = document.querySelector('textarea[data-testid="recraft-textarea"]');
+      if (tgt && tgt.value === exp) { clearInterval(chk); resolve(true); }
+      else if (attempts++ >= max) { clearInterval(chk); resolve(false); }
+    }, intv);
+  });
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  const clickBtn = sel => { const btn = document.querySelector(sel); if (btn) btn.click(); return Promise.resolve(); };
+  const findRecraft = () => Promise.resolve(document.querySelector('button[data-testid="recraft-button"]')?.textContent.trim() === 'Recraft');
+  const waitForRecraft = (intv = 1000, max = 30) => new Promise(resolve => {
+    let attempts = 0;
+    const chk = setInterval(async () => {
+      if (attempts++ >= max) { clearInterval(chk); resolve(false); return; }
+      if (await findRecraft()) { clearInterval(chk); resolve(true); }
+    }, intv);
+  });
+  const isCancel = () => document.querySelector('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary')?.textContent.trim() === 'Cancel';
+  const checkConcurrency = () => document.querySelector('div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true')?.textContent.includes("Sorry, we can’t recraft as fast as you click");
+  
+  const runSeq = async () => {
+    while (prompts.length) {
+      if (isCancel()) break;
+      await delay(2000);
+      const promptText = await setNextPrompt();
+      if (!promptText) break;
+      if (!(await waitForInput(promptText))) continue;
+      await clickBtn('button[data-testid="recraft-button"]');
+      let err = false;
+      for (let j = 0; j < 5; j++) {
+        if (checkConcurrency()) { err = true; break; }
+        await delay(2000);
+      }
+      if (err) continue;
+      await delay(1000);
+      await waitForRecraft();
+      await delay(1000);
+      await clickBtn('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
+      await delay(1000);
+      await clickBtn('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
+      await delay(1000);
+      await clickBtn('button.c-xHEva:nth-child(2)');
+      await delay(1000);
+      await clickBtn('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
+      await delay(1000);
+      await clickBtn('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
+    }
+  };
+  
+  const checkPrompts = () => {
+    const src = document.getElementById('promptBoxTextarea');
+    if (!src) return false;
+    const m = [...src.value.matchAll(regex)];
+    prompts = m.map(x => x[1]);
+    if (prompts.length) { runSeq(); return true; }
+    return false;
+  };
+  
+  if (!checkPrompts()) {
+    const id = setInterval(() => { if (checkPrompts()) clearInterval(id); }, 5000);
+  }
+})();
