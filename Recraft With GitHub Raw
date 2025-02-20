@@ -1,0 +1,130 @@
+(async () => {
+  const rawFileURL =
+      "https://raw.githubusercontent.com/imrandk/Prompt-Lit/main/Prompt%20List",
+    regex = /Prompt:\s*(.+?)(?=\n|$)/g;
+  let promptList = [],
+    promptIndex = 0;
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  const setReactInputValue = (el, val) => {
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value"
+    ).set.call(el, val);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  const setNextPrompt = async () => {
+    if (!promptList.length) return null;
+    const promptText = promptList[promptIndex];
+    promptIndex = (promptIndex + 1) % promptList.length;
+    const ta = document.querySelector('textarea[data-testid="recraft-textarea"]');
+    if (!ta) return null;
+    ta.focus();
+    setReactInputValue(ta, promptText);
+    ta.dispatchEvent(new Event("change", { bubbles: true }));
+    await delay(100);
+    return promptText;
+  };
+
+  const waitForPromptInput = async (expected, interval = 500, max = 20) => {
+    for (let i = 0; i < max; i++) {
+      const ta = document.querySelector('textarea[data-testid="recraft-textarea"]');
+      if (ta && ta.value === expected) return true;
+      await delay(interval);
+    }
+    return false;
+  };
+
+  const clickRecraftButton = async () =>
+    document.querySelector('button[data-testid="recraft-button"]')?.click();
+
+  const waitForRecraftButton = async (interval = 1000, max = 30) => {
+    for (let i = 0; i < max; i++) {
+      const btn = document.querySelector('button[data-testid="recraft-button"]');
+      if (btn && btn.textContent.trim() === "Recraft") return true;
+      await delay(interval);
+    }
+    return false;
+  };
+
+  const clickTogglerButton = async () =>
+    document
+      .querySelector('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]')
+      ?.click();
+
+  const clickSVGButton = async () => {
+    document
+      .querySelectorAll(
+        "button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa"
+      )
+      .forEach(
+        b =>
+          b.textContent.trim() === "SVG" &&
+          b.offsetParent !== null &&
+          !b.disabled &&
+          b.click()
+      );
+  };
+
+  const clickSecondButton = async () => {
+    const btn = document.querySelector("button.c-xHEva:nth-child(2)");
+    if (btn && btn.offsetParent !== null && !btn.disabled) btn.click();
+  };
+
+  const isCancelButtonPresent = () => {
+    const btn = document.querySelector(
+      "button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary"
+    );
+    return btn?.textContent.trim() === "Cancel";
+  };
+
+  const checkMaxConcurrencyMessage = () => {
+    const div = document.querySelector("div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true");
+    return div?.textContent.includes("Sorry, we can’t recraft as fast as you click");
+  };
+
+  const runSequentially = async () => {
+    for (let i = 0; i < 99; i++) {
+      if (isCancelButtonPresent()) {
+        console.log("Cancel button found. Stopping execution.");
+        break;
+      }
+      await delay(2000);
+      const promptValue = await setNextPrompt();
+      if (!(await waitForPromptInput(promptValue))) {
+        console.log("Prompt not loaded. Skipping this iteration.");
+        continue;
+      }
+      await clickRecraftButton();
+      let concurrencyError = false;
+      for (let j = 0; j < 5; j++) {
+        if (checkMaxConcurrencyMessage()) {
+          concurrencyError = true;
+          console.log("Max Concurrency message found. Retrying the first button.");
+          break;
+        }
+        await delay(2000);
+      }
+      if (concurrencyError) continue;
+      await delay(1000);
+      await waitForRecraftButton();
+      await delay(1000);
+      await clickTogglerButton();
+      await delay(1000);
+      await clickSVGButton();
+      await delay(1000);
+      await clickSecondButton();
+      await delay(1000);
+      await clickTogglerButton();
+      await delay(1000);
+      await clickSVGButton();
+    }
+  };
+
+  try {
+    const text = await (await fetch(rawFileURL)).text();
+    promptList = [...text.matchAll(regex)].map(m => m[1]);
+    runSequentially();
+  } catch (e) {}
+})();
