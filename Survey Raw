@@ -1,0 +1,25 @@
+let buttons = [
+    { text: "Work", next: "survey-next" },
+    { text: "Designer / Graphic Artist", next: "survey-next" },
+    { text: "Vector Art Generation", next: "survey-next" },
+    { text: "No, it’s my first time", next: "survey-next" },
+    { text: "Web search", next: "survey-next" },
+    { text: "Let’s recraft!", next: "survey-next" },
+    { text: "Select plan", next: "select-subscription-plan" }
+];
+
+buttons.reduce((promise, button) => {
+    return promise.then(() => {
+        let buttonElement = Array.from(document.querySelectorAll(`button[data-testid="survey-answer"]`))
+            .find(btn => btn.textContent.trim() === button.text);
+        if (buttonElement) buttonElement.click();
+
+        return new Promise(resolve => {
+            setTimeout(() => {
+                let nextButton = document.querySelector(`button[data-testid="${button.next}"]`);
+                if (nextButton) nextButton.click();
+                resolve();
+            }, 0);
+        });
+    });
+}, Promise.resolve());
