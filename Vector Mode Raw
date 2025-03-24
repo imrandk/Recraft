@@ -1,0 +1,38 @@
+const div = document.querySelector('.c-iKhdKS');
+const widthInput = document.querySelector('span[data-testid="width-input-area"]');
+const heightInput = document.querySelector('span[data-testid="height-input-area"]');
+
+function reloadPage() {
+    window.location.reload();
+}
+
+function performClicks() {
+    div.click();
+    const checkApplyBtn = setInterval(() => {
+        const applyBtn = document.querySelector('.c-dENsEo-ichpEri-css > .c-bZNrxE');
+        if (applyBtn || attempts++ >= 50) {
+            applyBtn?.click();
+            clearInterval(checkApplyBtn);
+            adjustSizes();
+        }
+    }, 100);
+}
+
+function adjustSizes() {
+    const checkSizes = setInterval(() => {
+        if (widthInput && heightInput || sizeAttempts++ >= 50) {
+            if (widthInput && heightInput) {
+                widthInput.innerText = '3840';
+                widthInput.focus();
+                widthInput.dispatchEvent(new Event('input', { bubbles: true }));
+                heightInput.innerText = '2160';
+                heightInput.focus();
+                heightInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            clearInterval(checkSizes);
+            setTimeout(reloadPage, 1000);
+        }
+    }, 100);
+}
+
+performClicks();
