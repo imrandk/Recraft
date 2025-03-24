@@ -1,172 +1,105 @@
-// Draggable box
-const box = document.createElement('div');
-Object.assign(box.style, {
-  position: 'absolute',
-  width: '300px',
-  height: '200px',
-  backgroundColor: 'white',
-  border: '2px solid #ccc',
-  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-  top: '50px',
-  left: '50px',
-  resize: 'both',
-  overflow: 'auto'
-});
-const header = document.createElement('div');
-Object.assign(header.style, {
-  width: '100%',
-  height: '30px',
-  backgroundColor: '#007bff',
-  color: 'white',
-  textAlign: 'center',
-  lineHeight: '30px',
-  cursor: 'move'
-});
-header.textContent = 'Drag Me';
+const box = document.createElement("div");
+Object.assign(box.style, {position:"absolute",width:"300px",height:"200px",backgroundColor:"white",border:"2px solid #ccc",boxShadow:"0 4px 8px rgba(0,0,0,0.1)",top:"50px",left:"50px",resize:"both",overflow:"auto"});
+const header = document.createElement("div");
+Object.assign(header.style, {width:"100%",height:"30px",backgroundColor:"#007bff",color:"white",textAlign:"center",lineHeight:"30px",cursor:"move"});
+header.textContent = "Drag Me";
 box.appendChild(header);
-const ta = document.createElement('textarea');
-ta.id = 'promptBoxTextarea';
-Object.assign(ta.style, {
-  width: '100%',
-  height: 'calc(100% - 30px)',
-  border: 'none',
-  outline: 'none',
-  resize: 'none',
-  padding: '10px',
-  fontSize: '16px'
-});
-ta.placeholder = 'Enter prompts in format:\nPrompt: Your prompt text';
+const ta = document.createElement("textarea");
+ta.id = "promptBoxTextarea";
+Object.assign(ta.style, {width:"100%",height:"calc(100% - 30px)",border:"none",outline:"none",resize:"none",padding:"10px",fontSize:"16px"});
+ta.placeholder = "Enter prompts in format:\nPrompt: Your prompt text";
 box.appendChild(ta);
 document.body.appendChild(box);
 
 let isDragging = false, offsetX, offsetY;
-header.addEventListener('mousedown', e => {
+header.addEventListener("mousedown", e => {
   isDragging = true;
   const rect = box.getBoundingClientRect();
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
 });
-document.addEventListener('mousemove', e => {
-  if (isDragging) {
-    box.style.left = `${e.clientX - offsetX}px`;
-    box.style.top = `${e.clientY - offsetY}px`;
-  }
+document.addEventListener("mousemove", e => { if (isDragging) { box.style.left = `${e.clientX - offsetX}px`; box.style.top = `${e.clientY - offsetY}px`; } });
+document.addEventListener("mouseup", () => isDragging = false);
+
+const regex = /Prompt:\s*(.+?)(?=\n|$)/g;
+let prompts = [];
+
+function setInput(el, val) {
+  try {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(el, val);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  } catch {}
+}
+
+const click = sel => new Promise(r => {
+  const btn = document.querySelector(sel);
+  btn ? (btn.click(), r(true)) : r(false);
 });
-document.addEventListener('mouseup', () => isDragging = false);
 
-// Automation code
-(() => {
-  const regex = /Prompt:\s*(.+?)(?=\n|$)/g;
-  let prompts = [];
-  const setReactInput = (el, val) => {
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')
-      .set.call(el, val);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  };
-  const setNextPrompt = () => new Promise(resolve => {
-    const src = document.getElementById('promptBoxTextarea');
-    if (prompts.length && src) {
-      const text = prompts.shift();
-      const esc = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const re = new RegExp(`^\\s*Prompt:\\s*${esc}\\s*(?:\\r?\\n)?`, 'm');
-      src.value = src.value.replace(re, '');
-      const tgt = document.querySelector('textarea[data-testid="recraft-textarea"]');
-      if (tgt) {
-        tgt.focus();
-        setReactInput(tgt, text);
-        tgt.dispatchEvent(new Event('change', { bubbles: true }));
-        setTimeout(() => resolve(text), 100);
-      } else resolve(null);
-    } else resolve(null);
-  });
-  const waitForInput = (exp, intv = 500, max = 20) => new Promise(resolve => {
-    let attempts = 0;
-    const chk = setInterval(() => {
-      const tgt = document.querySelector('textarea[data-testid="recraft-textarea"]');
-      if (tgt && tgt.value === exp) { clearInterval(chk); resolve(true); }
-      else if (attempts++ >= max) { clearInterval(chk); resolve(false); }
-    }, intv);
-  });
-  const delay = ms => new Promise(r => setTimeout(r, ms));
-  const clickBtn = sel => { 
-    const btn = document.querySelector(sel); 
-    if (btn) btn.click(); 
-    return Promise.resolve(); 
-  };
-
-  // Updated function: waits up to 'timeout' ms for any button matching the selector
-  // that has text "SVG", then clicks the first found.
-  const clickSvgBtn = async (sel, timeout = 5000) => {
-    const start = Date.now();
-    while (Date.now() - start < timeout) {
-      const btns = document.querySelectorAll(sel);
-      for (const btn of btns) {
-        if (btn.textContent.trim() === "SVG") {
-          btn.click();
-          return Promise.resolve();
-        }
-      }
-      await delay(100);
+const waitFor = (sel, text) => new Promise(r => {
+  const observer = new MutationObserver(() => {
+    const el = document.querySelector(sel);
+    if (el && el.textContent.trim() === text) {
+      observer.disconnect();
+      r(true);
     }
-    return Promise.resolve();
-  };
-
-  const findRecraft = () => Promise.resolve(
-    document.querySelector('button[data-testid="recraft-button"]')?.textContent.trim() === 'Recraft'
-  );
-  const waitForRecraft = (intv = 1000, max = 30) => new Promise(resolve => {
-    let attempts = 0;
-    const chk = setInterval(async () => {
-      if (attempts++ >= max) { clearInterval(chk); resolve(false); return; }
-      if (await findRecraft()) { clearInterval(chk); resolve(true); }
-    }, intv);
   });
-  const isCancel = () => document.querySelector(
-    'button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary'
-  )?.textContent.trim() === 'Cancel';
-  const checkConcurrency = () => document.querySelector(
-    'div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true'
-  )?.textContent.includes("Sorry, we can’t recraft as fast as you click");
-  
-  const runSeq = async () => {
-    while (prompts.length) {
-      if (isCancel()) break;
-      await delay(2000);
-      const promptText = await setNextPrompt();
-      if (!promptText) break;
-      if (!(await waitForInput(promptText))) continue;
-      await clickBtn('button[data-testid="recraft-button"]');
-      let err = false;
-      for (let j = 0; j < 5; j++) {
-        if (checkConcurrency()) { err = true; break; }
-        await delay(2000);
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+  setTimeout(() => { observer.disconnect(); r(false); }, 30000);
+});
+
+const clickSvg = (sel, timeout = 5000) => new Promise(async r => {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    const btns = document.querySelectorAll(sel);
+    for (const btn of btns) {
+      if (btn.textContent.trim() === "SVG") {
+        btn.click();
+        r(true);
+        return;
       }
-      if (err) continue;
-      await delay(1000);
-      await waitForRecraft();
-      await delay(1000);
-      await clickBtn('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
-      await delay(1000);
-      await clickSvgBtn('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
-      await delay(1000);
-      await clickBtn('button.c-xHEva:nth-child(2)');
-      await delay(1000);
-      await clickBtn('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
-      await delay(1000);
-      await clickSvgBtn('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
     }
-  };
-  
-  const checkPrompts = () => {
-    const src = document.getElementById('promptBoxTextarea');
-    if (!src) return false;
-    const m = [...src.value.matchAll(regex)];
-    prompts = m.map(x => x[1]);
-    if (prompts.length) { runSeq(); return true; }
-    return false;
-  };
-  
-  if (!checkPrompts()) {
-    const id = setInterval(() => { if (checkPrompts()) clearInterval(id); }, 5000);
+    await new Promise(r => setTimeout(r, 100));
   }
-})();
+  r(false);
+});
+
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+const nextPrompt = () => new Promise(r => {
+  const src = document.getElementById("promptBoxTextarea");
+  if (prompts.length && src) {
+    const val = prompts.shift();
+    src.value = src.value.replace(new RegExp(`^\\s*Prompt:\\s*${val.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\s*(?:\\r?\\n)?`, "m"), "");
+    const tgt = document.querySelector('textarea[data-testid="recraft-textarea"]');
+    tgt ? (tgt.focus(), setInput(tgt, val), r(val)) : r(null);
+  } else r(null);
+});
+
+const run = async () => {
+  while (prompts.length) {
+    const val = await nextPrompt();
+    if (!val) break;
+    if (!await click('button[data-testid="recraft-button"]')) continue;
+    if (!await waitFor('button[data-testid="recraft-button"]', "Recraft")) continue;
+    await click('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
+    await delay(500);
+    const svgSel = "button[class*='c-bZNrxE'][class*='mode-primary']";
+    if (await clickSvg(svgSel)) await delay(500);
+    await click("button.c-xHEva:nth-child(2)");
+    await delay(500);
+    await click('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
+    await delay(500);
+    if (await clickSvg(svgSel)) await delay(500);
+  }
+};
+
+const check = () => {
+  const src = document.getElementById("promptBoxTextarea");
+  if (!src || !src.value.trim()) return false;
+  prompts = [...src.value.matchAll(regex)].map(x => x[1]);
+  if (prompts.length) { run(); return true; }
+  return false;
+};
+
+check() || ta.addEventListener("input", () => { if (check()) ta.removeEventListener("input", this); });
