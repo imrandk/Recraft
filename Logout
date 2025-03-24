@@ -1,0 +1,6 @@
+const firstButton = document.querySelector('.c-crbeIZ');
+firstButton.click();
+setTimeout(() => {
+    const secondButton = document.querySelector('[data-testid="user-logout"]') || document.querySelector('.c-gRsTRw');
+    if (secondButton) secondButton.click();
+}, 1000);
