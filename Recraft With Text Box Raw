@@ -1,13 +1,42 @@
 const box = document.createElement("div");
-Object.assign(box.style, {position:"absolute",width:"300px",height:"200px",backgroundColor:"white",border:"2px solid #ccc",boxShadow:"0 4px 8px rgba(0,0,0,0.1)",top:"50px",left:"50px",resize:"both",overflow:"auto"});
+Object.assign(box.style, {
+  position: "absolute",
+  width: "300px",
+  height: "200px",
+  backgroundColor: "white",
+  border: "2px solid #ccc",
+  boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+  top: "50px",
+  left: "50px",
+  resize: "both",
+  overflow: "auto"
+});
+
 const header = document.createElement("div");
-Object.assign(header.style, {width:"100%",height:"30px",backgroundColor:"#007bff",color:"white",textAlign:"center",lineHeight:"30px",cursor:"move"});
+Object.assign(header.style, {
+  width: "100%",
+  height: "30px",
+  backgroundColor: "#007bff",
+  color: "white",
+  textAlign: "center",
+  lineHeight: "30px",
+  cursor: "move"
+});
 header.textContent = "Drag Me";
 box.appendChild(header);
+
 const ta = document.createElement("textarea");
 ta.id = "promptBoxTextarea";
-Object.assign(ta.style, {width:"100%",height:"calc(100% - 30px)",border:"none",outline:"none",resize:"none",padding:"10px",fontSize:"16px"});
-ta.placeholder = "Enter prompts in format:\nPrompt: Your prompt text";
+Object.assign(ta.style, {
+  width: "100%",
+  height: "calc(100% - 30px)",
+  border: "none",
+  outline: "none",
+  resize: "none",
+  padding: "10px",
+  fontSize: "16px"
+});
+ta.placeholder = "Write your prompt here (e.g., Prompt: Your text)";
 box.appendChild(ta);
 document.body.appendChild(box);
 
@@ -18,88 +47,168 @@ header.addEventListener("mousedown", e => {
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
 });
-document.addEventListener("mousemove", e => { if (isDragging) { box.style.left = `${e.clientX - offsetX}px`; box.style.top = `${e.clientY - offsetY}px`; } });
+document.addEventListener("mousemove", e => {
+  if (isDragging) {
+    box.style.left = `${e.clientX - offsetX}px`;
+    box.style.top = `${e.clientY - offsetY}px`;
+  }
+});
 document.addEventListener("mouseup", () => isDragging = false);
 
-const regex = /Prompt:\s*(.+?)(?=\n|$)/g;
-let prompts = [];
-
-function setInput(el, val) {
+const setInput = (el, val) => {
   try {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(el, val);
     el.dispatchEvent(new Event("input", { bubbles: true }));
   } catch {}
-}
-
-const click = sel => new Promise(r => {
-  const btn = document.querySelector(sel);
-  btn ? (btn.click(), r(true)) : r(false);
-});
-
-const waitFor = (sel, text) => new Promise(r => {
-  const observer = new MutationObserver(() => {
-    const el = document.querySelector(sel);
-    if (el && el.textContent.trim() === text) {
-      observer.disconnect();
-      r(true);
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
-  setTimeout(() => { observer.disconnect(); r(false); }, 30000);
-});
-
-const clickSvg = (sel, timeout = 5000) => new Promise(async r => {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    const btns = document.querySelectorAll(sel);
-    for (const btn of btns) {
-      if (btn.textContent.trim() === "SVG") {
-        btn.click();
-        r(true);
-        return;
-      }
-    }
-    await new Promise(r => setTimeout(r, 100));
-  }
-  r(false);
-});
-
-const delay = ms => new Promise(r => setTimeout(r, ms));
-
-const nextPrompt = () => new Promise(r => {
-  const src = document.getElementById("promptBoxTextarea");
-  if (prompts.length && src) {
-    const val = prompts.shift();
-    src.value = src.value.replace(new RegExp(`^\\s*Prompt:\\s*${val.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\s*(?:\\r?\\n)?`, "m"), "");
-    const tgt = document.querySelector('textarea[data-testid="recraft-textarea"]');
-    tgt ? (tgt.focus(), setInput(tgt, val), r(val)) : r(null);
-  } else r(null);
-});
-
-const run = async () => {
-  while (prompts.length) {
-    const val = await nextPrompt();
-    if (!val) break;
-    if (!await click('button[data-testid="recraft-button"]')) continue;
-    if (!await waitFor('button[data-testid="recraft-button"]', "Recraft")) continue;
-    await click('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
-    await delay(500);
-    const svgSel = "button[class*='c-bZNrxE'][class*='mode-primary']";
-    if (await clickSvg(svgSel)) await delay(500);
-    await click("button.c-xHEva:nth-child(2)");
-    await delay(500);
-    await click('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
-    await delay(500);
-    if (await clickSvg(svgSel)) await delay(500);
-  }
 };
 
-const check = () => {
-  const src = document.getElementById("promptBoxTextarea");
-  if (!src || !src.value.trim()) return false;
-  prompts = [...src.value.matchAll(regex)].map(x => x[1]);
-  if (prompts.length) { run(); return true; }
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+const clickRecraftButton = () => {
+  const button = document.querySelector('button[data-testid="recraft-button"]');
+  if (button) button.click();
+  return Promise.resolve();
+};
+
+const findRecraftButton = () => {
+  const button = document.querySelector('button[data-testid="recraft-button"]');
+  return Promise.resolve(button && button.textContent.trim() === 'Recraft');
+};
+
+const waitForRecraftButton = (interval = 1000, maxAttempts = 30) => {
+  return new Promise(resolve => {
+    let attempts = 0;
+    const checkButton = setInterval(async () => {
+      if (attempts >= maxAttempts) {
+        clearInterval(checkButton);
+        resolve(false);
+      } else if (await findRecraftButton()) {
+        clearInterval(checkButton);
+        resolve(true);
+      }
+      attempts++;
+    }, interval);
+  });
+};
+
+const clickTogglerButton = () => {
+  const togglerButton = document.querySelector('[data-testid="recraft-topbar-export"] > [data-testid="toggler"]');
+  if (togglerButton) togglerButton.click();
+  return Promise.resolve();
+};
+
+const clickSVGButton = () => {
+  const buttons = document.querySelectorAll('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa');
+  buttons.forEach(button => {
+    if (button.textContent.trim() === 'SVG' && button.offsetParent !== null && !button.disabled) button.click();
+  });
+  return Promise.resolve();
+};
+
+const clickSecondButton = () => {
+  const button = document.querySelector('button.c-xHEva:nth-child(2)');
+  if (button && button.offsetParent !== null && !button.disabled) button.click();
+  return Promise.resolve();
+};
+
+const isCancelButtonPresent = () => {
+  const cancelButton = document.querySelector('button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary');
+  if (cancelButton && cancelButton.textContent.trim() === 'Cancel') {
+    cancelButton.click(); // Click the Cancel button if found
+    return true;
+  }
   return false;
 };
 
-check() || ta.addEventListener("input", () => { if (check()) ta.removeEventListener("input", this); });
+const checkMaxConcurrencyMessage = () => {
+  const messageDiv = document.querySelector('div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true');
+  return messageDiv && messageDiv.textContent.includes("Sorry, we can’t recraft as fast as you click");
+};
+
+const processSinglePrompt = async (prompt) => {
+  const tgt = document.querySelector('textarea[data-testid="recraft-textarea"]');
+  if (!tgt) return false;
+
+  let inputText = prompt.trim().replace("Prompt: ", "").trim();
+  tgt.focus();
+  setInput(tgt, inputText);
+
+  ta.value = ta.value.replace(prompt, "").trim() || "";
+
+  for (let i = 0; i < 99; i++) {
+    if (isCancelButtonPresent()) {
+      await delay(1000); // Small delay after clicking Cancel
+    }
+
+    await delay(2000);
+    await clickRecraftButton();
+
+    let concurrencyError = false;
+    for (let j = 0; j < 5; j++) {
+      if (checkMaxConcurrencyMessage()) {
+        concurrencyError = true;
+        break;
+      }
+      await delay(2000);
+    }
+
+    if (concurrencyError) continue;
+
+    await delay(1000);
+    await waitForRecraftButton();
+    await delay(1000);
+    await clickTogglerButton();
+    await delay(1000);
+    await clickSVGButton();
+    await delay(1000);
+    await clickSecondButton();
+    await delay(1000);
+    await clickTogglerButton();
+    await delay(1000);
+    await clickSVGButton();
+    return true;
+  }
+  return true;
+};
+
+const processPrompts = async () => {
+  let text = ta.value.trim();
+  if (!text) return;
+
+  const prompts = text.split('\n').filter(line => line.trim().startsWith("Prompt: "));
+  if (!prompts.length) {
+    ta.value = "";
+    return;
+  }
+
+  for (const prompt of prompts) {
+    if (!await processSinglePrompt(prompt)) break;
+  }
+};
+
+const autoRunIfNoPrompts = () => {
+  const firstButton = document.querySelector('.c-crbeIZ');
+  firstButton.click();
+  setTimeout(() => {
+    const secondButton = document.querySelector('[data-testid="user-logout"]') || document.querySelector('.c-gRsTRw');
+    if (secondButton) secondButton.click();
+  }, 1000);
+};
+
+let isProcessing = false;
+ta.addEventListener("input", async () => {
+  if (isProcessing) return;
+  isProcessing = true;
+  await processPrompts();
+  isProcessing = false;
+});
+
+setInterval(() => {
+  const text = ta.value.trim();
+  const prompts = text.split('\n').filter(line => line.trim().startsWith("Prompt: "));
+  if (!text || prompts.length === 0) {
+    autoRunIfNoPrompts();
+  }
+}, 70000);
+
+setInterval(() => console.clear(), 10000);
