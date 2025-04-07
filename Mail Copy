@@ -1,16 +1,35 @@
-async function clickButtonsSequentially() {
-    const wait = (selector, text) => new Promise(resolve => {
-        const check = () => {
-            const el = [...document.querySelectorAll(selector)].find(e => e.textContent.trim() === text)?.parentElement;
-            el ? resolve(el) : setTimeout(check, 100);
-        };
+async function autoCopyOTP() {
+    const wait = (s, c = document) => new Promise(r => {
+        const check = () => c.querySelector(s) ? r(c.querySelector(s)) : requestAnimationFrame(check);
         check();
     });
+    const delay = ms => new Promise(r => setTimeout(r, ms));
+    const copy = t => {
+        const ta = document.createElement('textarea');
+        ta.value = t;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    };
 
-    (await wait('.el-button span', 'Change')).click();
-    (await wait('.el-button--primary span', 'Yes')).click();
-    await new Promise(r => setTimeout(r, 2000));
-    (await wait('.iconx span', 'Copy')).click();
+    const refreshBtn = await wait('.el-button--mini.is-round');
+    refreshBtn.click();
+    await delay(2000);
+
+    const mailItem = await wait('.mail-item');
+    mailItem.click();
+    await delay(2000);
+
+    const iframe = await wait('#fullmessage');
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    const otpBlock = await wait('[data-block-id="381"]', iframeDoc);
+    const otpText = otpBlock.textContent.trim().match(/\d{6}/)[0];
+
+    copy(otpText);
+
+    const closeBtn = await wait('.el-message-box__headerbtn');
+    closeBtn.click();
 }
 
-clickButtonsSequentially();
+autoCopyOTP();
