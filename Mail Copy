@@ -1,0 +1,16 @@
+async function clickButtonsSequentially() {
+    const wait = (selector, text) => new Promise(resolve => {
+        const check = () => {
+            const el = [...document.querySelectorAll(selector)].find(e => e.textContent.trim() === text)?.parentElement;
+            el ? resolve(el) : setTimeout(check, 100);
+        };
+        check();
+    });
+
+    (await wait('.el-button span', 'Change')).click();
+    (await wait('.el-button--primary span', 'Yes')).click();
+    await new Promise(r => setTimeout(r, 2000));
+    (await wait('.iconx span', 'Copy')).click();
+}
+
+clickButtonsSequentially();
