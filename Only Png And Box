@@ -137,10 +137,10 @@
       return Promise.resolve();
     };
 
-    const clickSVGButton = () => {
+    const clickPNGButton = () => {
       const buttons = document.querySelectorAll(selectors.svgButton);
       buttons.forEach(button => {
-        if (button.textContent.trim() === 'SVG' && button.offsetParent !== null && !button.disabled) {
+        if (button.textContent.trim() === 'PNG' && button.offsetParent !== null && !button.disabled) {
           button.click();
         }
       });
@@ -191,7 +191,7 @@
         await delay(800);
         await clickTogglerButton();
         await delay(800);
-        await clickSVGButton();
+        await clickPNGButton();
         return true;
       }
       return true;
