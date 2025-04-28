@@ -62,177 +62,148 @@
     document.removeEventListener("mousemove", moveHandler);
   });
 
-  // New code integration: Run after box is created
-  async function runNewCode() {
-    // First new code: Set slider value to 0
-    const slider = document.querySelector('input[name="numberOfImages"]');
-    if (slider) {
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-      nativeInputValueSetter.call(slider, '0');
-      slider.dispatchEvent(new Event('input', { bubbles: true }));
-    }
+  const setInput = (el, val) => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(el, val);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
 
-    // Second new code: Click specific selectors
-    const selectors = [
-      'svg.c-cZHvSz-bJzRPR-direction-right',
-      '.c-leHWbT:nth-child(1) > [data-testid="toggler"]',
-      '.c-leHWbT:nth-child(1) > [data-testid="toggler"]',
-      '.c-vQCsk-iebzDAR-css > .c-bZNrxE'
-    ];
-    for (const s of selectors) {
-      let el;
-      while (!(el = document.querySelector(s))) await new Promise(requestAnimationFrame);
-      el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-    }
-  }
+  const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-  // Run new code and then proceed with the rest of the main code
-  runNewCode().then(() => {
-    const setInput = (el, val) => {
-      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(el, val);
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    };
+  const selectors = {
+    recraftButton: 'button[data-testid="recraft-button"]',
+    toggler: '[data-testid="recraft-topbar-export"] > [data-testid="toggler"]',
+    svgButton: 'button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa',
+    cancelButton: 'button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary',
+    concurrencyMsg: 'div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true',
+    textarea: 'textarea[data-testid="recraft-textarea"]'
+  };
 
-    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const clickRecraftButton = () => {
+    const button = document.querySelector(selectors.recraftButton);
+    if (button) button.click();
+    return Promise.resolve();
+  };
 
-    const selectors = {
-      recraftButton: 'button[data-testid="recraft-button"]',
-      toggler: '[data-testid="recraft-topbar-export"] > [data-testid="toggler"]',
-      svgButton: 'button.c-bZNrxE.c-cfmRqm.c-cfmRqm-fGHEql-stretch-true.c-cfmRqm-kumaHe-size-s.c-cfmRqm-ffVEBR-mode-primary.c-nSdQa',
-      cancelButton: 'button.c-bZNrxE.c-cfmRqm.c-cfmRqm-djDtlJ-stretch-false.c-cfmRqm-hdlaDN-size-m.c-cfmRqm-vSIUM-mode-secondary',
-      concurrencyMsg: 'div.c-kWXNTX.c-kWXNTX-ijbiex-visible-true',
-      textarea: 'textarea[data-testid="recraft-textarea"]'
-    };
+  const findRecraftButton = () => {
+    const button = document.querySelector(selectors.recraftButton);
+    return Promise.resolve(button && button.textContent.trim() === 'Recraft');
+  };
 
-    const clickRecraftButton = () => {
-      const button = document.querySelector(selectors.recraftButton);
-      if (button) button.click();
-      return Promise.resolve();
-    };
-
-    const findRecraftButton = () => {
-      const button = document.querySelector(selectors.recraftButton);
-      return Promise.resolve(button && button.textContent.trim() === 'Recraft');
-    };
-
-    const waitForRecraftButton = (interval = 1000, maxAttempts = 15) => {
-      return new Promise(resolve => {
-        let attempts = 0;
-        const checkButton = setInterval(async () => {
-          if (attempts >= maxAttempts) {
-            clearInterval(checkButton);
-            resolve(false);
-          } else if (await findRecraftButton()) {
-            clearInterval(checkButton);
-            resolve(true);
-          }
-          attempts++;
-        }, interval);
-      });
-    };
-
-    const clickTogglerButton = () => {
-      const togglerButton = document.querySelector(selectors.toggler);
-      if (togglerButton) togglerButton.click();
-      return Promise.resolve();
-    };
-
-    const clickPNGButton = () => {
-      const buttons = document.querySelectorAll(selectors.svgButton);
-      buttons.forEach(button => {
-        if (button.textContent.trim() === 'PNG' && button.offsetParent !== null && !button.disabled) {
-          button.click();
+  const waitForRecraftButton = (interval = 1000, maxAttempts = 15) => {
+    return new Promise(resolve => {
+      let attempts = 0;
+      const checkButton = setInterval(async () => {
+        if (attempts >= maxAttempts) {
+          clearInterval(checkButton);
+          resolve(false);
+        } else if (await findRecraftButton()) {
+          clearInterval(checkButton);
+          resolve(true);
         }
-      });
-      return Promise.resolve();
-    };
+        attempts++;
+      }, interval);
+    });
+  };
 
-    let hasCancelBeenClicked = false;
+  const clickTogglerButton = () => {
+    const togglerButton = document.querySelector(selectors.toggler);
+    if (togglerButton) togglerButton.click();
+    return Promise.resolve();
+  };
 
-    const isCancelButtonPresent = () => {
-      const cancelButton = document.querySelector(selectors.cancelButton);
-      if (cancelButton && cancelButton.textContent.trim() === 'Cancel') {
-        cancelButton.click();
-        hasCancelBeenClicked = true;
-        return true;
+  const clickSVGButton = () => {
+    const buttons = document.querySelectorAll(selectors.svgButton);
+    buttons.forEach(button => {
+      if (button.textContent.trim() === 'SVG' && button.offsetParent !== null && !button.disabled) button.click();
+    });
+    return Promise.resolve();
+  };
+
+  let hasCancelBeenClicked = false;
+
+  const isCancelButtonPresent = () => {
+    const cancelButton = document.querySelector(selectors.cancelButton);
+    if (cancelButton && cancelButton.textContent.trim() === 'Cancel') {
+      cancelButton.click();
+      hasCancelBeenClicked = true;
+      return true;
+    }
+    return false;
+  };
+
+  const checkMaxConcurrencyMessage = () => {
+    const messageDiv = document.querySelector(selectors.concurrencyMsg);
+    return messageDiv && messageDiv.textContent.includes("Sorry, we can’t recraft as fast as you click");
+  };
+
+  const processSinglePrompt = async (prompt) => {
+    const tgt = document.querySelector(selectors.textarea);
+    if (!tgt) return false;
+    let inputText = prompt.trim().replace("Prompt: ", "").trim();
+    tgt.focus();
+    setInput(tgt, inputText);
+    ta.value = ta.value.replace(prompt, "").trim() || "";
+    for (let i = 0; i < 10; i++) {
+      if (isCancelButtonPresent()) {
+        await delay(800);
       }
-      return false;
-    };
-
-    const checkMaxConcurrencyMessage = () => {
-      const messageDiv = document.querySelector(selectors.concurrencyMsg);
-      return messageDiv && messageDiv.textContent.includes("Sorry, we can’t recraft as fast as you click");
-    };
-
-    const processSinglePrompt = async (prompt) => {
-      const tgt = document.querySelector(selectors.textarea);
-      if (!tgt) return false;
-      let inputText = prompt.trim().replace("Prompt: ", "").trim();
-      tgt.focus();
-      setInput(tgt, inputText);
-      ta.value = ta.value.replace(prompt, "").trim() || "";
-      for (let i = 0; i < 10; i++) {
-        if (isCancelButtonPresent()) {
-          await delay(800);
+      await delay(1500);
+      await clickRecraftButton();
+      let concurrencyError = false;
+      for (let j = 0; j < 3; j++) {
+        if (checkMaxConcurrencyMessage()) {
+          concurrencyError = true;
+          break;
         }
         await delay(1500);
-        await clickRecraftButton();
-        let concurrencyError = false;
-        for (let j = 0; j < 3; j++) {
-          if (checkMaxConcurrencyMessage()) {
-            concurrencyError = true;
-            break;
-          }
-          await delay(1500);
-        }
-        if (concurrencyError) continue;
-        await delay(800);
-        await waitForRecraftButton();
-        await delay(800);
-        await clickTogglerButton();
-        await delay(800);
-        await clickPNGButton();
-        return true;
       }
+      if (concurrencyError) continue;
+      await delay(800);
+      await waitForRecraftButton();
+      await delay(800);
+      await clickTogglerButton();
+      await delay(800);
+      await clickSVGButton();
       return true;
-    };
+    }
+    return true;
+  };
 
-    const processPrompts = async () => {
-      let text = ta.value.trim();
-      if (!text) return;
-      const prompts = text.split('\n').filter(line => line.trim().startsWith("Prompt: "));
-      if (!prompts.length) {
-        ta.value = "";
-        return;
-      }
-      for (const prompt of prompts) {
-        if (!await processSinglePrompt(prompt)) break;
-      }
-    };
+  const processPrompts = async () => {
+    let text = ta.value.trim();
+    if (!text) return;
+    const prompts = text.split('\n').filter(line => line.trim().startsWith("Prompt: "));
+    if (!prompts.length) {
+      ta.value = "";
+      return;
+    }
+    for (const prompt of prompts) {
+      if (!await processSinglePrompt(prompt)) break;
+    }
+  };
 
-    const autoRunIfNoPrompts = () => {
-      const el = document.querySelector('img[data-testid="topbar-avatar"]')?.closest('button,[role="button"],div');
-      ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach(e => el?.dispatchEvent(new MouseEvent(e, { bubbles: true })));
-      setTimeout(() => {
-        const secondButton = document.querySelector('[data-testid="user-logout"]') || document.querySelector('.c-gRsTRw');
-        if (secondButton) secondButton.click();
-      }, 1000);
-    };
+  const autoRunIfNoPrompts = () => {
+    const el = document.querySelector('img[data-testid="topbar-avatar"]')?.closest('button,[role="button"],div');
+    ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach(e => el?.dispatchEvent(new MouseEvent(e, { bubbles: true })));
+    setTimeout(() => {
+      const secondButton = document.querySelector('[data-testid="user-logout"]') || document.querySelector('.c-gRsTRw');
+      if (secondButton) secondButton.click();
+    }, 1000);
+  };
 
-    let isProcessing = false;
-    ta.addEventListener("input", async () => {
-      if (isProcessing) return;
-      isProcessing = true;
-      await processPrompts();
-      isProcessing = false;
-    });
-
-    setInterval(() => {
-      const text = ta.value.trim();
-      const prompts = text.split('\n').filter(line => line.trim().startsWith("Prompt: "));
-      if (hasCancelBeenClicked && (!text || prompts.length === 0)) {
-        autoRunIfNoPrompts();
-      }
-    }, 120000);
+  let isProcessing = false;
+  ta.addEventListener("input", async () => {
+    if (isProcessing) return;
+    isProcessing = true;
+    await processPrompts();
+    isProcessing = false;
   });
+
+  setInterval(() => {
+    const text = ta.value.trim();
+    const prompts = text.split('\n').filter(line => line.trim().startsWith("Prompt: "));
+    if (hasCancelBeenClicked && (!text || prompts.length === 0)) {
+      autoRunIfNoPrompts();
+    }
+  }, 120000);
 })();
