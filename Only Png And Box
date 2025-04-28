@@ -1,4 +1,4 @@
-(function(){
+(function() {
   const box = document.createElement("div");
   Object.assign(box.style, {
     position: "absolute",
@@ -206,4 +206,12 @@
       autoRunIfNoPrompts();
     }
   }, 120000);
+
+  // Additional code block for slider adjustment
+  const slider = document.querySelector('input[name="numberOfImages"]');
+  if (slider) {
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    nativeInputValueSetter.call(slider, '0');
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 })();
