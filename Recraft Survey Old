@@ -19,13 +19,15 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
             .find(btn => btn.textContent.trim() === button.text);
         if (buttonElement) {
             buttonElement.click();
-            await delay(10);
+            await delay(100);
         }
 
         const nextButton = document.querySelector(`button[data-testid="${button.next}"], ${button.next}`);
         if (nextButton) {
             nextButton.click();
-            await delay(10);
+            await delay(100);
         }
     }
+
+    location.reload();
 })();
